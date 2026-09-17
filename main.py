@@ -120,46 +120,54 @@ async def main():
     logger.info("🤖 VONNE BOUTIQUE BOT 2.0 - INICIANDO")
     logger.info("=" * 70)
     
-    # Inicializar manejador
-    vonne_handler = VonneHandler(
-        loyverse_api_key=LOYVERSE_API_KEY,
-        telegram_token=TELEGRAM_TOKEN,
-        group_chat_id=GROUP_CHAT_ID
-    )
-    logger.info(f"✅ Manejador inicializado")
-    logger.info(f"   Grupo: {GROUP_CHAT_ID}")
-    
-    # Crear aplicación Telegram
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    
-    # Agregar handlers
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message_wrapper))
-    
-    logger.info("✅ Handlers de Telegram registrados")
-    
-    # Iniciar tareas en background
-    monitor_task, scheduler_task = await init_background_tasks()
-    
-    # Enviar mensaje de inicio al grupo
     try:
-        await vonne_handler.send_to_group(
-            "🟢 <b>VONNBOT2 ACTIVO</b>\n\n"
-            "Monitoreo de caja: ✅\n"
-            "Reportes programados: ✅\n\n"
-            "🏪 Vonne Boutique Saltillo\n"
-            "📍 Plaza La Fragua"
+        # Inicializar manejador
+        vonne_handler = VonneHandler(
+            loyverse_api_key=LOYVERSE_API_KEY,
+            telegram_token=TELEGRAM_TOKEN,
+            group_chat_id=GROUP_CHAT_ID
         )
+        logger.info(f"✅ Manejador inicializado")
+        logger.info(f"   Grupo: {GROUP_CHAT_ID}")
+        
+        # Crear aplicación Telegram
+        app = Application.builder().token(TELEGRAM_TOKEN).build()
+        
+        # Agregar handlers
+        app.add_handler(CommandHandler("start", start_command))
+        app.add_handler(CommandHandler("help", help_command))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message_wrapper))
+        
+        logger.info("✅ Handlers de Telegram registrados")
+        
+        # Iniciar tareas en background
+        asyncio.create_task(init_background_tasks())
+        
+        # Enviar mensaje de inicio al grupo
+        try:
+            await vonne_handler.send_to_group(
+                "🟢 <b>VONNBOT2 ACTIVO</b>\n\n"
+                "Monitoreo de caja: ✅\n"
+                "Reportes programados: ✅\n\n"
+                "🏪 Vonne Boutique Saltillo\n"
+                "📍 Plaza La Fragua"
+            )
+        except Exception as e:
+            logger.warning(f"No se pudo notificar al grupo al inicio: {e}")
+        
+        logger.info("=" * 70)
+        logger.info("🚀 BOT LISTO - Escuchando mensajes...")
+        logger.info("=" * 70)
+        
+        # Iniciar polling (sin usar Updater)
+        async with app:
+            await app.start()
+            await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+            # Mantener corriendo
+            await asyncio.Event().wait()
+    
     except Exception as e:
-        logger.warning(f"No se pudo notificar al grupo al inicio: {e}")
-    
-    logger.info("=" * 70)
-    logger.info("🚀 BOT LISTO - Escuchando mensajes...")
-    logger.info("=" * 70)
-    
-    # Iniciar polling
-    await app.run_polling(allowed_updates=Update.ALL_TYPES)
+        logger.error(f"❌ Error en main: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
